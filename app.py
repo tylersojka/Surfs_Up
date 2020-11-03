@@ -46,7 +46,7 @@ def welcome():
     f'<a href="/api/v1.0/stations"> /api/v1.0/stations: All Opperating Recording Stations </a><br>'
     f'<a href="/api/v1.0/tobs"> /api/v1.0/tobs: All temperature observations from the most active station in the last year </a><br>'
     f'/api/v1.0/temp/start: All temperature observations from yyyy/mm/dd - most recent entry <br>'
-    f'/api/v1.0/temp/start/end All observed temperatures between given date yyyy,mm,dd/yyyy/mm/dd<br>'
+    f'/api/v1.0/temp/start/end: Average, minimum and maximum observed temperatures between given date yyyy,mm,dd/yyyy/mm/dd<br>'
     )
 
 #create second route (precipitation)
@@ -87,10 +87,10 @@ def tobs():
 def start(start):
     sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
 
-    results =  (session.query(*sel)
-                       .filter(func.strftime("%Y-%m-%d", Measurement.date) >= start)
-                       .group_by(Measurement.date)
-                       .all())
+    results = (session.query(*sel)
+            .filter(func.strftime("%Y-%m-%d", Measurement.date) >= start)
+            .group_by(Measurement.date)
+            .all())
 
     dates = []                       
     for result in results:
@@ -103,24 +103,31 @@ def start(start):
     return jsonify(dates)
 
 @app.route('/api/v1.0/temp/<start>/<end>')
-def startEnd(start, end):
-    sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
+def stats(start, end):
+    start = input('please enter a start date (yyyy-mm-dd')
+    end = input('please enter an end date (yyyy-mm-dd)')
+    sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]           
 
-    results =  (session.query(*sel)
-                       .filter(func.strftime("%Y-%m-%d", Measurement.date) >= start)
-                       .filter(func.strftime("%Y-%m-%d", Measurement.date) <= end)
-                       .group_by(Measurement.date)
-                       .all())
+    if not end: 
+        results = session.query(*sel).\
+            filter(Measurement.date <= start).all()
+        temps = list(np.ravel(results))
+        return jsonify(temps)
 
+    results = session.query(*sel).\
+        filter(Measurement.date >= start).\
+        filter(Measurement.date <= end).all()
+    
     dates = []                       
     for result in results:
         date_dict = {}
-        date_dict["Date"] = result[0]
+        date_dict["Date"] = f' {start} - {end}'
         date_dict["Low Temp"] = result[1]
         date_dict["Avg Temp"] = result[2]
         date_dict["High Temp"] = result[3]
         dates.append(date_dict)
     return jsonify(dates)
+    
 
 if __name__ == "__main__":
     app.run(debug=True)
