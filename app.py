@@ -41,11 +41,12 @@ app = Flask(__name__)
 def welcome():
     return(
     f'Welcome to the Climate Analysis API!<br>'
+    f'Data available for dates 2010-01-01 - 2017-08-23 <br>'
     f'Available Routes:<br>'
     f'<a href="/api/v1.0/precipitation"> /api/v1.0/precipitation: Last Year of Percipitation </a><br>'
     f'<a href="/api/v1.0/stations"> /api/v1.0/stations: All Opperating Recording Stations </a><br>'
     f'<a href="/api/v1.0/tobs"> /api/v1.0/tobs: All temperature observations from the most active station in the last year </a><br>'
-    f'/api/v1.0/temp/start: All temperature observations from yyyy/mm/dd - most recent entry <br>'
+    f'/api/v1.0/temp/start: All temperature observations from yyyy/mm/dd - most recent entry (2017-8-23) <br>'
     f'/api/v1.0/temp/start/end: Average, minimum and maximum observed temperatures between given date yyyy,mm,dd/yyyy/mm/dd<br>'
     )
 
@@ -83,36 +84,47 @@ def tobs():
 
 
 # create the 5th route, stats
+# @app.route('/api/v1.0/temp/<start>')
+# def start(start):
+#     sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
+
+#     results = (session.query(*sel)
+#             .filter(func.strftime("%Y-%m-%d", Measurement.date) >= start)
+#             .group_by(Measurement.date)
+#             .all())
+
+#     dates = []                       
+#     for result in results:
+#         date_dict = {}
+#         date_dict["Date"] = result[0]
+#         date_dict["Low Temp"] = result[1]
+#         date_dict["Avg Temp"] = result[2]
+#         date_dict["High Temp"] = result[3]
+#         dates.append(date_dict)
+#     return jsonify(dates)
+
+
 @app.route('/api/v1.0/temp/<start>')
-def start(start):
-    sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
-
-    results = (session.query(*sel)
-            .filter(func.strftime("%Y-%m-%d", Measurement.date) >= start)
-            .group_by(Measurement.date)
-            .all())
-
-    dates = []                       
-    for result in results:
-        date_dict = {}
-        date_dict["Date"] = result[0]
-        date_dict["Low Temp"] = result[1]
-        date_dict["Avg Temp"] = result[2]
-        date_dict["High Temp"] = result[3]
-        dates.append(date_dict)
-    return jsonify(dates)
-
 @app.route('/api/v1.0/temp/<start>/<end>')
-def stats(start, end):
-    start = input('please enter a start date (yyyy-mm-dd')
-    end = input('please enter an end date (yyyy-mm-dd)')
+def stats(start, end=None):
+    # start = input('please enter a start date (yyyy-mm-dd')
+    # end = input('please enter an end date (yyyy-mm-dd)')
     sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]           
 
     if not end: 
         results = session.query(*sel).\
             filter(Measurement.date <= start).all()
-        temps = list(np.ravel(results))
-        return jsonify(temps)
+        #temps = list(np.ravel(results))
+        
+        dates = []                       
+        for result in results:
+            date_dict = {}
+            date_dict["Date"] = f' {start} - {end}'
+            date_dict["Low Temp"] = result[1]
+            date_dict["Avg Temp"] = result[2]
+            date_dict["High Temp"] = result[3]
+            dates.append(date_dict)
+        return jsonify(dates)
 
     results = session.query(*sel).\
         filter(Measurement.date >= start).\
